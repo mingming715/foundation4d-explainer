@@ -59,8 +59,12 @@
 
 <section id="arch"><h2>3. Foundation4D 모델</h2>
 <p>C대 카메라 × T개 시점 비디오가 주어지면 camera z-depth·pointmap·ego motion·3D 박스·semantic occupancy·3D Gaussian을 추정합니다. 각 이미지는 자기 촬영 시각을 가져 <b>비동기 입력</b>도 다룹니다.</p>
-<h3>인터랙티브 아키텍처 (모듈 hover/클릭)</h3>
-<div id="archDiagram"></div><div id="archInfo" class="info">모듈을 클릭하면 세부 설명이 나옵니다.</div>
+<h3>모듈별 동작 애니메이션 (모듈 클릭 → 재생)</h3>
+<div id="archDiagram" class="pipe"></div>
+<div class="stage-wrap"><div id="stage3d"></div>
+<div class="stage-ui"><div id="stageTitle">모듈을 선택하세요</div><div id="stageCap" class="info"></div>
+<div class="btns"><button id="sPrev">◀ 이전</button><button id="sPlay">⏸ 일시정지</button><button id="sNext">다음 ▶</button><button id="sAll">▶▶ 전체 흐름 재생</button></div>
+<div id="stageDots"></div><p class="small">⚠ 3D 애니메이션은 동작 원리를 보여주는 <b>개념도</b>입니다. 토큰·패치·query 개수는 화면용으로 축소했으며, 캡션의 숫자만 논문 값입니다. 드래그/핀치로 시점 회전·확대.</p></div></div>
 <figure><img src="assets/fig02.png" loading="lazy" alt="Figure 2"><figcaption><b>그림 2.</b> Foundation4D 아키텍처 원본. 6 cameras × time 입력 → rig/ego/register 토큰 → factorized attention (8쌍) → Geometry · Gaussian · Detection · Occupancy 헤드.</figcaption></figure>
 
 <h3>Factorized spatiotemporal attention</h3>
@@ -127,4 +131,5 @@
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script src="charts.js"></script>
 <script type="module" src="scene.js"></script>
+<script type="module" src="arch.js"></script>
 </body></html>

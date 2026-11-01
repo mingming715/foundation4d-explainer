@@ -42,30 +42,6 @@ document.getElementById('tSlider').oninput=attn;attn();
  g.append('circle').attr('r',d=>d.g?9:18).attr('fill',d=>col(d.g));g.append('text').attr('dx',14).attr('dy',4).style('font-size','12px').text(d=>d.id);
  sim.on('tick',()=>{nodes.forEach(n=>{n.x=Math.max(20,Math.min(w-120,n.x));n.y=Math.max(20,Math.min(h-20,n.y))});l.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);g.attr('transform',d=>`translate(${d.x},${d.y})`)});})();
 
-// Architecture diagram
-(()=>{const M=[
-{id:'in',x:0,y:1.5,l:'6 카메라 × T 시점',t:'C대 카메라 × T 시점 이미지. 첫 번째 카메라가 기준 시각, 각 이미지는 자기 촬영 시각 τ를 가짐(비동기 입력 지원).'},
-{id:'enc',x:1,y:1.5,l:'DINOv2 ViT-L/14',t:'이미지별 패치 특징, 폭 1024. 1036×1036 → 74×74 격자 → 37×37 bilinear 다운샘플. 원해상도 특징은 FPN에서 사용.'},
-{id:'tok',x:2,y:0.4,l:'rig · ego · register×4',t:'rig 토큰: 상대 calibration / ego 토큰: rig 움직임 / register 토큰 4개: 보조.'},
-{id:'agg',x:2,y:1.5,l:'Factorized Attention ×16',t:'이미지 내부 attention + (카메라 간 view attention ↔ 시간축 time attention) 교대. 16 레이어(8쌍). 마지막 이미지/시간 블록 출력 concat → 폭 2d 문맥 토큰.'},
-{id:'geo',x:3.3,y:0,l:'Geometry 헤드',t:'rig 헤드(첫 시점 rig 토큰) + ego 헤드(기준 카메라 ego 토큰): translation+quaternion 회귀. DPT decoder: z-depth, pointmap, 21클래스 semantic (518×518). 식 (1)(2)(3).'},
-{id:'gs',x:3.3,y:1,l:'Gaussian 헤드',t:'픽셀당 Gaussian 1개(중심·RGB·스케일·quaternion·opacity) + 하늘 cubemap + 카메라별 affine 색. 식 (9)(10)(11)(12).'},
-{id:'fpn',x:3.3,y:2.2,l:'Shared FPN',t:'고해상도 이미지 특징과 문맥 특징을 top-down으로 결합. Detection·Occupancy가 공유.'},
-{id:'det',x:4.5,y:1.8,l:'Detection 헤드',t:'PETR식 query 900개, DETR3D decoder 6층, 폭 256. 클래스·3D 중심·크기·yaw·평면 속도. Hungarian 매칭, focal + L1, DN-DETR denoising, YOLOX 보조 2D 헤드(학습 시만).'},
-{id:'occ',x:4.5,y:2.7,l:'Occupancy 헤드',t:'BEV projector(기둥당 ref point 4개, deformable cross-attn) → 2D transposed conv 업샘플 → channel-to-height. 0.2 m voxel. 식 (8).'}];
- const E=[['in','enc'],['enc','agg'],['tok','agg'],['agg','geo'],['agg','gs'],['agg','fpn'],['enc','fpn'],['fpn','det'],['fpn','occ']];
- const w=W('#archDiagram'),h=360,bw=Math.min(150,w/5.6),x=d=>20+d*(w-bw-40)/4.5,y=d=>20+d*110;
- const s=d3.select('#archDiagram').append('svg').attr('width',w).attr('height',h);
- s.append('defs').append('marker').attr('id','ar').attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5).attr('markerWidth',6).attr('markerHeight',6).attr('orient','auto').append('path').attr('d','M0,0L10,5L0,10z').attr('fill','#3ec5ff');
- const by=Object.fromEntries(M.map(m=>[m.id,m]));
- s.selectAll('path.e').data(E).join('path').attr('fill','none').attr('stroke','#2b3a55').attr('stroke-width',1.6).attr('marker-end','url(#ar)')
-  .attr('d',([a,b])=>{const A=by[a],B=by[b];const x1=x(A.x)+bw,y1=y(A.y)+20,x2=x(B.x),y2=y(B.y)+20;return `M${x1},${y1}C${(x1+x2)/2},${y1} ${(x1+x2)/2},${y2} ${x2},${y2}`});
- const g=s.selectAll('g.m').data(M).join('g').attr('transform',d=>`translate(${x(d.x)},${y(d.y)})`).style('cursor','pointer')
-  .on('mouseover',(e,d)=>showTip(e,d.l)).on('mouseout',hideTip)
-  .on('click',function(e,d){g.select('rect').attr('stroke','#2b3a55');d3.select(this).select('rect').attr('stroke','#76b900');d3.select('#archInfo').html(`<b>${d.l}</b> — ${d.t}`)});
- g.append('rect').attr('width',bw).attr('height',40).attr('rx',8).attr('fill','#0f1420').attr('stroke','#2b3a55').attr('stroke-width',2);
- g.append('text').attr('x',bw/2).attr('y',25).attr('text-anchor','middle').style('font-size','12px').text(d=>d.l);})();
-
 // Attention grid
 (()=>{const C=6,T=4,cell=46,el=d3.select('#attnGrid');let mode='view',sel=[2,1];
  const s=el.append('svg').attr('width',70+T*cell+10).attr('height',30+C*cell);
