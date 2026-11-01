@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Foundation4D 한국어 인터랙티브 해설</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head><body>
+<nav id="nav"><b>Foundation4D</b>
+<a href="#abs">초록</a><a href="#intro">1. 서론</a><a href="#related">2. 관련연구</a><a href="#arch">3. 모델</a><a href="#train">4. 학습</a><a href="#video">5. 비디오 추론</a><a href="#pai">6. PAI 데이터셋</a></nav>
+
+<header class="hero">
+ <div id="hero3d"></div>
+ <div class="hero-txt">
+  <p class="tag">NVIDIA · arXiv 2610.30340 · 2026-10-21</p>
+  <h1>Foundation4D</h1>
+  <p class="sub">Towards a unified perception and reconstruction model for autonomous vehicles<br>자율주행차를 위한 통합 인지·재구성 모델 — 인터랙티브 한국어 해설 (초록 ~ 6장)</p>
+  <p class="hint">🖱 드래그로 회전 · 휠로 확대 — 자차와 카메라 6대의 시야(frustum), 4D 장면 토큰</p>
+  <div class="toggles">
+   <label><input type="checkbox" id="tgFrustum" checked> 카메라 frustum</label>
+   <label><input type="checkbox" id="tgTokens" checked> 장면 토큰(occupancy)</label>
+   <label><input type="checkbox" id="tgBoxes" checked> 3D 검출 박스</label>
+   <label><input type="checkbox" id="tgTime"> 시간축 재생</label>
+  </div>
+ </div>
+</header>
+
+<main>
+<section id="abs"><h2>초록</h2>
+<p>Foundation4D는 <b>멀티 카메라 주행 영상</b>에서 <b>geometry 추정, 3D detection, semantic occupancy, Gaussian reconstruction</b>을 한 번에 수행하는 통합 feed-forward 모델입니다. 공유 backbone은 <b>factorized spatiotemporal attention</b>으로 카메라·시간에 걸친 관측을 효율적으로 결합하고, 비디오 추론 파이프라인은 <b>pose graph optimization</b>으로 궤적을 보정하며 윈도우를 가로질러 객체 트랙을 잇습니다. 저자들은 1,253개 클립에 dense depth·occupancy 라벨을 붙인 <b>PAI‑Foundation4D</b> 벤치마크를 공개합니다.</p>
+<div class="kpis">
+ <div><span>1,253</span>PAI‑Foundation4D 클립</div>
+ <div><span>+1.2pt</span>top-class mAP (det+geo+occ 공동학습 vs det 단독)</div>
+ <div><span>−13.4%</span>camera-to-rig translation 오차 (geo+det vs geo 단독)</div>
+ <div><span>4</span>태스크: geometry · detection · occupancy · Gaussian</div>
+</div>
+<p class="note">벤치마크별 fine-tuning 시 Waymo·nuScenes depth AbsRel 최저, nuScenes detection mAP 최고, OpenOccupancy occupancy mIoU 최고 (비교 대상 중). 예측한 geometry·궤적은 LiDAR 없는 NuRec의 prior로 사용됩니다.</p>
+<figure><img src="assets/fig01.png" loading="lazy" alt="Figure 1"><figcaption><b>그림 1.</b> 카메라 영상에서 상호보완적 장면 표현으로 — RGB 입력, 3D detection, depth, semantic occupancy, Gaussian 렌더링.</figcaption></figure>
+</section>
+
+<section id="intro"><h2>1. 서론</h2>
+<p>자율주행 개발의 두 핵심 목표는 <b>주행 환경 이해</b>와 <b>녹화 장면의 시뮬레이션용 재구성</b>입니다. 둘 다 장면의 기하·객체·움직임·점유 공간 복원이 필요합니다. VGGT 같은 feed-forward 재구성이 토대가 되지만, VGGT의 global attention은 <b>전체 토큰 수의 제곱</b>으로 비용이 늘어 긴 멀티 카메라 비디오에 비쌉니다.</p>
+<div class="two"><div>
+<h3>Attention 비용 비교 (개념도)</h3>
+<p class="small">카메라 C=6, 이미지당 37×37 토큰 기준. 시점 수 T를 바꿔 보세요. 쌍(pair) 수 기준 상대 비용이며, 논문 측정값이 아닌 <b>개념적 계산</b>입니다.</p>
+<input type="range" id="tSlider" min="1" max="16" value="4"> T = <b id="tVal">4</b>
+<div id="attnChart"></div></div>
+<div><h3>4가지 기여</h3><ol class="contrib">
+<li>멀티 카메라 비디오 특징을 geometry·semantics·objects·occupancy·Gaussian decoder가 공유하는 feed-forward 모델</li>
+<li>윈도우 수준 기하를 정렬하고 객체 궤적을 조립하는 비디오 수준 추론 파이프라인</li>
+<li>센서 타이밍·자차/객체 움직임·가시성을 고려한 depth·occupancy 주석 파이프라인</li>
+<li>공통 장면에서 geometry·detection·occupancy를 비교하는 PAI‑Foundation4D 벤치마크</li></ol></div></div>
+</section>
+
+<section id="related"><h2>2. 관련 연구</h2>
+<p class="small">노드를 클릭하면 Foundation4D와의 관계가 표시됩니다.</p>
+<div id="relGraph"></div><div id="relInfo" class="info">노드를 클릭하세요.</div>
+</section>
+
+<section id="arch"><h2>3. Foundation4D 모델</h2>
+<p>C대 카메라 × T개 시점 비디오가 주어지면 camera z-depth·pointmap·ego motion·3D 박스·semantic occupancy·3D Gaussian을 추정합니다. 각 이미지는 자기 촬영 시각을 가져 <b>비동기 입력</b>도 다룹니다.</p>
+<h3>인터랙티브 아키텍처 (모듈 hover/클릭)</h3>
+<div id="archDiagram"></div><div id="archInfo" class="info">모듈을 클릭하면 세부 설명이 나옵니다.</div>
+<figure><img src="assets/fig02.png" loading="lazy" alt="Figure 2"><figcaption><b>그림 2.</b> Foundation4D 아키텍처 원본. 6 cameras × time 입력 → rig/ego/register 토큰 → factorized attention (8쌍) → Geometry · Gaussian · Detection · Occupancy 헤드.</figcaption></figure>
+
+<h3>Factorized spatiotemporal attention</h3>
+<p>각 레이어는 <b>이미지 내부 attention</b> 다음에 <b>같은 시점의 카메라 간(view)</b> 또는 <b>같은 카메라의 시간축(time)</b> attention을 번갈아 적용합니다. 아래 격자에서 토큰을 클릭하면 각 모드에서 어떤 이미지들과 attention하는지 보입니다.</p>
+<div class="btns" id="attnModes"><button data-m="global">VGGT global</button><button data-m="view" class="on">View (카메라 간)</button><button data-m="time">Time (시간축)</button></div>
+<div id="attnGrid"></div>
+<p class="small">DINOv2 ViT‑L/14 · 특징 폭 1024 · 1036×1036 이미지 → 74×74 패치 → 37×37로 bilinear 다운샘플(공간 토큰 1/4) · 16개 aggregation 레이어 · 마지막 이미지 블록과 시간 블록 출력을 이어 붙여 폭 2d 문맥 토큰.</p>
+
+<h3>3.4 Geometry decoder</h3>
+<div class="eq"><div id="eq1"></div><p>카메라 포즈 = 촬영 시각 τ<sub>t,c</sub>에서 보간한 ego 궤적 × 카메라 c의 고정 rig 변환. translation은 선형, 회전은 최단호 slerp 보간. (요약 표기, 원식은 아래 캡처)</p><img src="assets/eq01.png" alt="식 1" class="eqimg"></div>
+<div class="eq"><div id="eq2"></div><p>픽셀 u의 z‑depth d를 ray 단위벡터 r의 z성분으로 나눠 ray 거리로 바꾼 뒤 역투영. DPT decoder 출력 격자 518×518, semantic 21개 클래스.</p><img src="assets/eq02.png" alt="식 2" class="eqimg"></div>
+<div class="eq"><p>식 3 — geometry 손실 가중치 (depth, pointmap, rig, ego, 상대움직임, semantic):</p><div id="lossChart"></div><img src="assets/eq03.png" alt="식 3" class="eqimg"><p class="small">길이는 40m 기준으로 정규화 · β=0.2 · 상위 2% trimming · 상대 포즈는 5프레임 미만 쌍.</p></div>
+
+<h3>3.5 검출 · 3.6 Occupancy 범위</h3>
+<p>아래 3D 장면에서 두 영역을 직접 비교해 보세요 (rig 좌표계).</p>
+<div id="range3d" class="canvasbox"></div>
+<table class="tbl"><tr><th></th><th>전후 x</th><th>좌우 y</th><th>높이 z</th><th>비고</th></tr>
+<tr><td><span class="sw det"></span>Detection</td><td>−108 ~ 150 m</td><td>−108 ~ 108 m</td><td>−3 ~ 5 m</td><td>query 900 · decoder 6층 · 폭 256 · 12 클래스</td></tr>
+<tr><td><span class="sw occ"></span>Occupancy</td><td>−20 ~ 100 m</td><td>−30 ~ 30 m</td><td>−3 ~ 5 m</td><td>0.2 m voxel · BEV 기둥당 reference point 4개</td></tr></table>
+<figure><img src="assets/fig03.png" loading="lazy" alt="Figure 3"><figcaption><b>그림 3.</b> (a) 입력 카메라 프레임, (b) 업샘플된 BEV 특징의 PCA 색, (c) 예측 BEV. PCA만으로 점유/빈 영역이 뚜렷이 분리됩니다.</figcaption></figure>
+
+<h3>3.7 Gaussian 재구성</h3>
+<p>Instant NuRec을 따라 정적 Gaussian + actor Gaussian + 하늘 cubemap. 픽셀마다 중심·RGB·스케일·quaternion·opacity를 가진 Gaussian 1개. 추론 때는 <b>예측 포즈와 자체 검출로 만든 트랙</b>을 사용합니다.</p>
+<div class="eq"><div id="eq10"></div><p>splatting 누적 색 + 남은 투과율 × 하늘 색 → 카메라별 affine(3×3 M, bias b) → [0,1] clip. (요약 표기)</p><img src="assets/eq10.png" alt="식 10" class="eqimg"></div>
+<div id="gauss3d" class="canvasbox"></div><p class="small">위: 정적 Gaussian(회색 계열)과 궤적을 따라 강체 이동하는 actor Gaussian(주황)의 개념 시각화.</p>
+</section>
+
+<section id="train"><h2>4. 통합 모델 학습</h2>
+<h3>표 1. 내부 학습 데이터 구성 (막대에 hover)</h3>
+<div id="tab1Chart"></div>
+<figure><img src="assets/tab01.png" loading="lazy" alt="Table 1"><figcaption><b>표 1.</b> 원본. 평균 ~12초 클립, 총 ~695시간 · f‑theta 카메라 6대 30 FPS · 128채널 LiDAR 10 Hz · occupancy 10 클래스 · detection 12 클래스.</figcaption></figure>
+<h3>3단계 학습 타임라인</h3>
+<div id="stageChart"></div><div id="stageInfo" class="info">단계를 클릭하세요.</div>
+<div class="eq"><img src="assets/eq13.png" alt="식 13" class="eqimg"><p>Gaussian 결합 fine-tuning 가중치: geometry 1 · detection 0.1 · occupancy 0.2 · Gaussian 4. H100 64장, 업데이트당 4시점 ~3.8 s / 8시점 ~8.3 s.</p></div>
+</section>
+
+<section id="video"><h2>5. 멀티 카메라 비디오 추론</h2>
+<p>모델 시간 문맥보다 긴 비디오는 <b>겹치는 윈도우</b>로 처리해 공통 좌표계로 조립합니다. 네트워크 파라미터는 건드리지 않습니다.</p>
+<div class="btns" id="pgoModes"><button data-m="stitch" class="on">순차 Stitching (Sim3)</button><button data-m="pgo">전역 PGO</button></div>
+<div id="pgoChart"></div>
+<p class="small">개념 시뮬레이션: 순차 정렬은 오차가 누적되고 나중 윈도우가 이전 포즈를 고치지 못함 → PGO는 모든 윈도우의 상대 포즈 factor(간격 1,2,4,8)로 궤적 전체를 동시에 최적화. 실제 수치가 아닌 설명용 애니메이션입니다.</p>
+<div class="eq"><img src="assets/eq14.png" alt="식 14" class="eqimg"><p>식 14: Sim3 (s,R,t) 정렬 — Huber 페널티, 하늘 마스크 m, depth confidence 기하평균 w, IRLS로 최소화.</p></div>
+<div class="eq"><img src="assets/eq15.png" alt="식 15" class="eqimg"><p>식 15: 회전 먼저(첫 포즈 고정, Frobenius 차이) → translation 선형 최소자승 + motion prior(계수 30). 가중치는 윈도우 시작 1 → 끝 0.1 선형 감소. 외부 포즈·loop closure 없음.</p></div>
+<h3>5.3 Offline 다중 객체 추적</h3>
+<div class="flow" id="trackFlow"></div>
+</section>
+
+<section id="pai"><h2>6. Physical AI Autonomous Vehicles Foundation4D</h2>
+<p>PAI 데이터셋(멀티 카메라 RGB·LiDAR·레이더·보정·ego 궤적·자동 3D cuboid 트랙)에 <b>LiDAR 기반 depth 맵</b>과 <b>voxel별 semantic·속도 라벨 occupancy</b>를 더했습니다. 평가는 1,253개 테스트 클립, 카메라 6대.</p>
+<h3>주석 파이프라인 (단계 클릭)</h3>
+<div id="paiDiagram"></div><div id="paiInfo" class="info">단계를 클릭하세요.</div>
+<figure><img src="assets/fig04.png" loading="lazy" alt="Figure 4"><figcaption><b>그림 4.</b> PAI depth·occupancy 주석 파이프라인. instance 마스크는 투영된 3D cuboid를 박스 프롬프트로 한 SAM 2로 생성.</figcaption></figure>
+<h3>LiDAR 누적: 정적 vs 동적 (3D)</h3>
+<div id="lidar3d" class="canvasbox"></div>
+<p class="small">정적 점은 클립 전체 누적, 동적 점은 최대 10개 스캔 지역 윈도우에서 모아 목표 시각 actor 포즈로 warp (개념 시각화).</p>
+<table class="tbl"><tr><th>Occupancy 주석 grid</th><th>값</th></tr>
+<tr><td>voxel</td><td>0.1 m 정육면체</td></tr><tr><td>x</td><td>−150 ~ 150 m</td></tr><tr><td>y</td><td>−100 ~ 100 m</td></tr><tr><td>z</td><td>−3 ~ 5 m</td></tr>
+<tr><td>속도</td><td>모든 점유 voxel에 m/s 3D 속도 (정적 0, 동적은 트랙 속도)</td></tr></table>
+<figure><img src="assets/fig05.png" loading="lazy" alt="Figure 5"><figcaption><b>그림 5.</b> PAI 예시 2개 — depth를 덧입힌 멀티 카메라 RGB, 역투영 depth, occupancy 측면/정면도 (depth 범례 0.5~150 m).</figcaption></figure>
+</section>
+</main>
+<footer>원 논문: <a href="https://arxiv.org/abs/2610.30340">arXiv 2610.30340</a> · 그림/표/식 이미지 © 2026 NVIDIA, 해설 목적 인용 · 7장(실험) 이후는 다루지 않음 · 개념도로 표시된 시각화는 논문 수치가 아님.</footer>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="charts.js"></script>
+<script type="module" src="scene.js"></script>
+</body></html>
